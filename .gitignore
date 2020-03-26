@@ -64,5 +64,8 @@ node_modules/
 # dotenv environment variables file
 .env
 
+# Compiled lib
+lib/
+
 # postman file
 covid-project.postman_collection.json
