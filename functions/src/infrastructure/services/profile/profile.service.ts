@@ -13,12 +13,14 @@ import { Profile } from "../../../domain/models/profile";
 import { Question } from "../../../domain/models/question";
 import { Survey } from "../../../domain/models/survey";
 import { SaveProfilePort } from "../../../application/usecases/profile/save-profile.usecase";
+import { 
+    FREE, 
+    UNIQUE, 
+    MULTIPLE 
+} from "../../../config/global";
 
 export class ProfileService implements FindOneProfilePort, SaveProfilePort {
-    private FREE: string = 'FREE';
-    private UNIQUE: string = 'UNIQUE';
-    private MULTIPLE: string = 'MULTIPLE';
-
+    
     async findOne(uid: string): Promise<Profile> {
         const profileSnapshot: DocumentSnapshot = 
             await db.collection('profiles').doc(uid).get();
@@ -140,9 +142,9 @@ export class ProfileService implements FindOneProfilePort, SaveProfilePort {
                 question.order = snapshot.get('order');
                 question.type = snapshot.get('type');
                 
-                if(question.type === this.FREE) {
+                if(question.type === FREE) {
                     question.answer = snapshot.get('answer');
-                } else if(question.type === this.UNIQUE || question.type === this.MULTIPLE) {
+                } else if(question.type === UNIQUE || question.type === MULTIPLE) {
                     const answersQuerySnapshot: QuerySnapshot =
                         await snapshot.ref.collection('answers').get();
                     question.answers = await this.fillAllAnswers(answersQuerySnapshot);
@@ -237,7 +239,7 @@ export class ProfileService implements FindOneProfilePort, SaveProfilePort {
     private async saveQuestion(
         batch: WriteBatch, reference: DocumentReference, question: Question
     ): Promise<void> {
-        if(question.type === this.FREE) {
+        if(question.type === FREE) {
             await this.saveQuestionFree(batch, reference, question);
         } else {
             batch.create(reference.collection('questions').doc(question.id), {

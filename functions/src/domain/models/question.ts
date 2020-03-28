@@ -6,6 +6,7 @@ export interface Question extends Base {
     order: number;
     question: string;
     type: string;
+    subQuestion: boolean;
     answer: string;
     answers: Array<Answer>;
 }
