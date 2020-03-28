@@ -41,7 +41,7 @@ export class ProfileController {
     }
 
     @Post(':uid')
-    async save(@Body('profile') profile: Profile, @Param('uid') uid: string, @Res() res: Response): Promise<void> {
+    async save(@Param('uid') uid: string, @Body('profile') profile: Profile, @Res() res: Response): Promise<void> {
     //@Post()
     //async save(@Body('profile') profile: Profile, @Body('user') user: UserRecord, @Res() res: Response): Promise<void> {
         try {

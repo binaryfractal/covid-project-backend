@@ -216,8 +216,7 @@ export class ProfileService implements FindOneProfilePort, SaveProfilePort {
     private async saveVersion(
         batch: WriteBatch, reference: DocumentReference, survey: Survey
     ): Promise<void> {
-        const versionReference: DocumentReference = await reference.collection('versions').add({});
-
+        const versionReference: DocumentReference = reference.collection('versions').doc();
         batch.create(versionReference, {
             active: true,
             date: FieldValue.serverTimestamp(),
