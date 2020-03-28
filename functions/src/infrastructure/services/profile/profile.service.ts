@@ -1,9 +1,16 @@
+import { 
+    DocumentSnapshot, 
+    Timestamp, 
+    DocumentReference, 
+    CollectionReference, 
+    QuerySnapshot 
+} from "@google-cloud/firestore";
+import { db } from "../../../config/app";
+import { Answer } from "../../../domain/models/answer";
 import { FindOneProfilePort } from "../../../application/usecases/profile/find-one-profile.usecase";
 import { Profile } from "../../../domain/models/profile";
-import { db } from "config/app";
-import { DocumentSnapshot, Timestamp, DocumentReference, CollectionReference, QuerySnapshot } from "@google-cloud/firestore";
-import { Survey } from "domain/models/survey";
-import { Question } from "domain/models/question";
+import { Question } from "../../../domain/models/question";
+import { Survey } from "../../../domain/models/survey";
 
 export class ProfileService implements FindOneProfilePort {
     private FREE: string = 'FREE';
@@ -14,6 +21,7 @@ export class ProfileService implements FindOneProfilePort {
     private surveysReference: CollectionReference;
     private versionsReference: CollectionReference;
     private questionsReference: CollectionReference;
+    private answersReference: CollectionReference;
 
     async findOne(uid: string): Promise<Profile> {
         this.profileReference = db.collection('profiles').doc(uid);
@@ -144,11 +152,38 @@ export class ProfileService implements FindOneProfilePort {
                 if(question.type === this.FREE) {
                     question.answer = snapshot.get('answer');
                 } else if(question.type === this.UNIQUE || question.type === this.MULTIPLE){
-                    // Fill Answers
+                    this.answersReference = this.questionsReference.doc(snapshot.id).collection('answers');
+                    const answersQuerySnapshot: QuerySnapshot = await this.answersReference.get();
+                    question.answers = await this.fillAllAnswers(answersQuerySnapshot);
                 }
             }
         }
 
         return question;
+    }
+
+    private async fillAllAnswers(querySnapshot: QuerySnapshot): Promise<Array<Answer>> {
+        const answers: Array<Answer> = new Array<Answer>();
+        if(!querySnapshot.empty) {
+            let answer: Answer = {} as Answer;
+            querySnapshot.forEach(async(snapshot) => {
+                answer = await this.fillOneAnswer(snapshot);
+                answers.push(answer);
+            });
+        }
+
+        return answers;
+    }
+
+    private async fillOneAnswer(snapshot: DocumentSnapshot): Promise<Answer> {
+        const answer: Answer = {} as Answer;
+        if(snapshot.exists) {
+            if(snapshot.data() !== undefined) {
+                answer.id = snapshot.id;
+                answer.answer = snapshot.get('answer');
+            }
+        }
+
+        return answer;
     }
 }
