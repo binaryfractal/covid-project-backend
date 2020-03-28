@@ -13,6 +13,7 @@ import { fb } from '../../config/app';
 @Injectable()
 export class AuthenticationMiddleware implements NestMiddleware {
   async use(req: Request, res: Response, next: () => void) {
+    console.log(req.headers.authorization);
     if(!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
       res.status(HttpStatus.UNAUTHORIZED).send('Unauthorized');
       return;
