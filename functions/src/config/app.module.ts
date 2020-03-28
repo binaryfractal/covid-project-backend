@@ -35,6 +35,7 @@ export class AppModule {
         consumer
             .apply(AuthenticationMiddleware)
             .exclude({ path: 'example-people', method: RequestMethod.ALL },'example-people/(.*)')
+            .exclude({ path: 'profiles', method: RequestMethod.ALL }, 'profiles/(.*)')
             .forRoutes({ path: '*', method: RequestMethod.ALL });   
     }
 }
