@@ -1,8 +1,6 @@
 import { 
     DocumentSnapshot, 
     Timestamp, 
-    DocumentReference, 
-    CollectionReference, 
     QuerySnapshot 
 } from "@google-cloud/firestore";
 import { db } from "../../../config/app";
@@ -17,27 +15,15 @@ export class ProfileService implements FindOneProfilePort {
     private UNIQUE: string = 'UNIQUE';
     private MULTIPLE: string = 'MULTIPLE';
 
-    private profileReference: DocumentReference;
-    private surveysReference: CollectionReference;
-    private versionsReference: CollectionReference;
-    private questionsReference: CollectionReference;
-    private answersReference: CollectionReference;
-
     async findOne(uid: string): Promise<Profile> {
-        this.profileReference = db.collection('profiles').doc(uid);
+        const profileSnapshot: DocumentSnapshot = 
+            await db.collection('profiles').doc(uid).get();
 
-        const profileSnapshot: DocumentSnapshot = await this.profileReference.get();
-        const profile: Profile = await this.fillBasicProfile(profileSnapshot);
-        
-        this.surveysReference = this.profileReference.collection('surveys');
-        const surveysQuerySnapshot: QuerySnapshot = await this.surveysReference.get();
-
-        profile.surveys = await this.fillAllSurveys(surveysQuerySnapshot)
-
+        const profile: Profile = await this.fillOne(profileSnapshot);
         return profile;
     }
 
-    private async fillBasicProfile(snapshot: DocumentSnapshot): Promise<Profile> {
+    private async fillOne(snapshot: DocumentSnapshot): Promise<Profile> {
         const profile: Profile = {} as Profile;
         if(snapshot.exists) {
             if(snapshot.data() !== undefined) {
@@ -55,23 +41,24 @@ export class ProfileService implements FindOneProfilePort {
                 profile.state = snapshot.get('state');
                 profile.town = snapshot.get('town');
                 profile.zip = snapshot.get('zip');
+
+                const surveysQuerySnapshot: QuerySnapshot =
+                    await snapshot.ref.collection('surveys').get();
+                profile.surveys = await this.fillAllSurveys(surveysQuerySnapshot);
             }
         }
-
         return profile;
     }
 
     private async fillAllSurveys(querySnapshot: QuerySnapshot): Promise<Array<Survey>> {
         const surveys: Array<Survey> = new Array<Survey>();
-
         if(!querySnapshot.empty) {
             let survey: Survey = {} as Survey;
-            querySnapshot.forEach(async(snapshot) => {
+            for(let snapshot of querySnapshot.docs) {
                 survey = await this.fillOneSurvey(snapshot);
                 surveys.push(survey);
-            });
+            }
         }
-
         return surveys;
     }
 
@@ -79,31 +66,28 @@ export class ProfileService implements FindOneProfilePort {
         let survey: Survey = {} as Survey;
         if(snapshot.exists) {
             if(snapshot.data() !== undefined) {
-                this.versionsReference = this.surveysReference.doc(snapshot.id).collection('versions');
-                const versionsQuerySnapshot: QuerySnapshot = 
-                    await this.versionsReference.where("active", "==", true).get();
-                
+                const versionsQuerySnapshot: QuerySnapshot =
+                    await snapshot.ref.collection('versions').where("active", "==", true).get(); 
                 const surveys: Array<Survey> = await this.fillAllVersions(versionsQuerySnapshot);
                 
-                if(surveys.length > 0)
+                if(surveys.length > 0) {
                     survey = surveys[0];
+                    survey.id = snapshot.id;
+                }
             }
         }
-
         return survey;
     }
 
     private async fillAllVersions(querySnapshot: QuerySnapshot): Promise<Array<Survey>> {
         const surveys: Array<Survey> = new Array<Survey>();
-
         if(!querySnapshot.empty) {
             let survey: Survey = {} as Survey;
-            querySnapshot.forEach(async(snapshot) => {
+            for(let snapshot of querySnapshot.docs) {
                 survey = await this.fillOneVersion(snapshot);
                 surveys.push(survey);
-            });
+            }
         }
-
         return surveys;
     }
 
@@ -111,32 +95,26 @@ export class ProfileService implements FindOneProfilePort {
         const survey: Survey = {} as Survey;
         if(snapshot.exists) {
             if(snapshot.data() !== undefined) {
-                this.questionsReference = 
-                    this.versionsReference.where("active", "==", true).firestore.collection('questions');
-
-                survey.id = snapshot.id;
                 survey.date = (<Timestamp>snapshot.get('date')).toDate();
                 survey.name = snapshot.get('name');
 
-                const questionsQuerySnapshot: QuerySnapshot = await this.questionsReference.get();
+                const questionsQuerySnapshot: QuerySnapshot =
+                    await snapshot.ref.collection('questions').get();
                 survey.questions = await this.fillAllQuestions(questionsQuerySnapshot);
             }
         }
-
         return survey;
     }
 
     private async fillAllQuestions(querySnapshot: QuerySnapshot): Promise<Array<Question>> {
         const questions: Array<Question> = new Array<Question>();
-
         if(!querySnapshot.empty) {
             let question: Question = {} as Question;
-            querySnapshot.forEach(async(snapshot) => {
+            for(let snapshot of querySnapshot.docs) {
                 question = await this.fillOneQuestion(snapshot);
                 questions.push(question);
-            });
+            }
         }
-
         return questions;
     }
 
@@ -151,14 +129,13 @@ export class ProfileService implements FindOneProfilePort {
                 
                 if(question.type === this.FREE) {
                     question.answer = snapshot.get('answer');
-                } else if(question.type === this.UNIQUE || question.type === this.MULTIPLE){
-                    this.answersReference = this.questionsReference.doc(snapshot.id).collection('answers');
-                    const answersQuerySnapshot: QuerySnapshot = await this.answersReference.get();
+                } else if(question.type === this.UNIQUE || question.type === this.MULTIPLE) {
+                    const answersQuerySnapshot: QuerySnapshot =
+                        await snapshot.ref.collection('answers').get();
                     question.answers = await this.fillAllAnswers(answersQuerySnapshot);
                 }
             }
         }
-
         return question;
     }
 
@@ -166,12 +143,11 @@ export class ProfileService implements FindOneProfilePort {
         const answers: Array<Answer> = new Array<Answer>();
         if(!querySnapshot.empty) {
             let answer: Answer = {} as Answer;
-            querySnapshot.forEach(async(snapshot) => {
+            for(let snapshot of querySnapshot.docs) {
                 answer = await this.fillOneAnswer(snapshot);
                 answers.push(answer);
-            });
+            }
         }
-
         return answers;
     }
 
@@ -183,7 +159,6 @@ export class ProfileService implements FindOneProfilePort {
                 answer.answer = snapshot.get('answer');
             }
         }
-
         return answer;
     }
 }
