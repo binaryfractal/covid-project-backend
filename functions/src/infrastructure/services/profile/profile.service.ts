@@ -1,7 +1,10 @@
 import { 
+    DocumentReference,
     DocumentSnapshot, 
+    FieldValue,
+    QuerySnapshot, 
     Timestamp, 
-    QuerySnapshot 
+    WriteBatch
 } from "@google-cloud/firestore";
 import { db } from "../../../config/app";
 import { Answer } from "../../../domain/models/answer";
@@ -9,8 +12,9 @@ import { FindOneProfilePort } from "../../../application/usecases/profile/find-o
 import { Profile } from "../../../domain/models/profile";
 import { Question } from "../../../domain/models/question";
 import { Survey } from "../../../domain/models/survey";
+import { SaveProfilePort } from "../../../application/usecases/profile/save-profile.usecase";
 
-export class ProfileService implements FindOneProfilePort {
+export class ProfileService implements FindOneProfilePort, SaveProfilePort {
     private FREE: string = 'FREE';
     private UNIQUE: string = 'UNIQUE';
     private MULTIPLE: string = 'MULTIPLE';
@@ -19,11 +23,20 @@ export class ProfileService implements FindOneProfilePort {
         const profileSnapshot: DocumentSnapshot = 
             await db.collection('profiles').doc(uid).get();
 
-        const profile: Profile = await this.fillOne(profileSnapshot);
+        const profile: Profile = await this.fillOneProfile(profileSnapshot);
         return profile;
     }
 
-    private async fillOne(snapshot: DocumentSnapshot): Promise<Profile> {
+    async save(profile: Profile): Promise<void> {
+        const batch: WriteBatch = db.batch();
+
+        const profileReference: DocumentReference = db.collection('profiles').doc(profile.uid); 
+        await this.saveProfile(batch, profileReference, profile);
+
+        await batch.commit();
+    }
+
+    private async fillOneProfile(snapshot: DocumentSnapshot): Promise<Profile> {
         const profile: Profile = {} as Profile;
         if(snapshot.exists) {
             if(snapshot.data() !== undefined) {
@@ -99,7 +112,7 @@ export class ProfileService implements FindOneProfilePort {
                 survey.name = snapshot.get('name');
 
                 const questionsQuerySnapshot: QuerySnapshot =
-                    await snapshot.ref.collection('questions').get();
+                    await snapshot.ref.collection('questions').orderBy('order').get();
                 survey.questions = await this.fillAllQuestions(questionsQuerySnapshot);
             }
         }
@@ -160,5 +173,109 @@ export class ProfileService implements FindOneProfilePort {
             }
         }
         return answer;
+    }
+
+    private async saveProfile(
+        batch: WriteBatch, reference: DocumentReference, profile: Profile
+    ): Promise<void> {
+        batch.set(reference, {
+            age: profile.age,
+            country: profile.country,
+            email: profile.email,
+            gender: profile.gender,
+            idCountry: profile.idCountry,
+            idRisk: profile.idRisk,
+            lastUpdate: FieldValue.serverTimestamp(),
+            name: profile.name,
+            risk: profile.risk,
+            state: profile.state,
+            town: profile.town,
+            zip: profile.zip
+        });
+        
+        await this.saveSurveys(batch, reference, profile.surveys);
+    }
+
+    private async saveSurveys(
+        batch: WriteBatch, reference: DocumentReference, surveys: Array<Survey>
+    ): Promise<void> {
+        for(let survey of surveys) {
+            await this.saveSurvey(batch, reference, survey);
+        }
+    }
+
+    private async saveSurvey(
+        batch: WriteBatch, reference: DocumentReference, survey: Survey
+    ): Promise<void> {
+        const surveyReference: DocumentReference = reference.collection('surveys').doc(survey.id);
+        batch.set(surveyReference, {});
+
+        await this.saveVersion(batch, surveyReference, survey);
+    }
+
+    private async saveVersion(
+        batch: WriteBatch, reference: DocumentReference, survey: Survey
+    ): Promise<void> {
+        const versionReference: DocumentReference = await reference.collection('versions').add({});
+
+        batch.create(versionReference, {
+            active: true,
+            date: FieldValue.serverTimestamp(),
+            name: survey.name
+        });
+
+        await this.saveQuestions(batch, versionReference, survey.questions);
+    }
+
+    private async saveQuestions(
+        batch: WriteBatch, reference: DocumentReference, questions: Array<Question>
+    ): Promise<void> {
+        for(let question of questions) {
+            await this.saveQuestion(batch, reference, question);
+        }
+    }
+
+    private async saveQuestion(
+        batch: WriteBatch, reference: DocumentReference, question: Question
+    ): Promise<void> {
+        if(question.type === this.FREE) {
+            await this.saveQuestionFree(batch, reference, question);
+        } else {
+            batch.create(reference.collection('questions').doc(question.id), {
+                order: question.order,
+                question: question.question,
+                type: question.type
+            });
+
+            const questionReference = reference.collection('questions').doc(question.id);
+            await this.saveAnswers(batch, questionReference, question.answers);
+        }
+    }
+
+    private async saveQuestionFree(
+        batch: WriteBatch, reference: DocumentReference, question: Question
+    ): Promise<void> {
+        batch.create(reference.collection('questions').doc(question.id), {
+            answer: question.answer,
+            order: question.order,
+            question: question.question,
+            type: question.type
+        });
+    }
+
+    private async saveAnswers(
+        batch: WriteBatch, reference: DocumentReference, answers: Array<Answer>
+    ): Promise<void> {
+        for(let answer of answers) {
+            await this.saveAnswer(batch, reference, answer);
+        }
+    }
+
+    private async saveAnswer(
+        batch:  WriteBatch, reference: DocumentReference, answer: Answer
+    ): Promise<void> {
+        batch.create(reference.collection('answers').doc(answer.id), {
+            answer: answer.answer
+        });
     }
 }
