@@ -10,7 +10,9 @@ import { db } from "../../../config/app";
 import { Answer } from "../../../domain/models/answer";
 import { FindOneProfilePort } from "../../../application/usecases/profile/find-one-profile.usecase";
 import { Profile } from "../../../domain/models/profile";
+import { QualifierService } from "./qualifier.service";
 import { Question } from "../../../domain/models/question";
+import { Risk } from "../../../domain/models/risk";
 import { Survey } from "../../../domain/models/survey";
 import { SaveProfilePort } from "../../../application/usecases/profile/save-profile.usecase";
 import { 
@@ -19,7 +21,7 @@ import {
     MULTIPLE 
 } from "../../../config/global";
 
-export class ProfileService implements FindOneProfilePort, SaveProfilePort {
+export class ProfileService extends QualifierService implements FindOneProfilePort, SaveProfilePort {
     
     async findOne(uid: string): Promise<Profile> {
         const profileSnapshot: DocumentSnapshot = 
@@ -29,13 +31,21 @@ export class ProfileService implements FindOneProfilePort, SaveProfilePort {
         return profile;
     }
 
-    async save(profile: Profile): Promise<void> {
+    async save(profile: Profile): Promise<Risk> {
         const batch: WriteBatch = db.batch();
+        let risk: Risk = {} as Risk;
+
+        if(null !== profile.surveys) {
+            risk = await this.rateSurveys(profile.surveys);
+            profile.idRisk = risk.id;
+            profile.risk = risk.name;
+        }
 
         const profileReference: DocumentReference = db.collection('profiles').doc(profile.uid); 
         await this.saveProfile(batch, profileReference, profile);
-
         await batch.commit();
+
+        return risk;
     }
 
     private async fillOneProfile(snapshot: DocumentSnapshot): Promise<Profile> {
@@ -180,7 +190,7 @@ export class ProfileService implements FindOneProfilePort, SaveProfilePort {
     private async saveProfile(
         batch: WriteBatch, reference: DocumentReference, profile: Profile
     ): Promise<void> {
-        batch.set(reference, {
+        batch.update(reference, {
             age: profile.age,
             country: profile.country,
             email: profile.email,
