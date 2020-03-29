@@ -21,7 +21,7 @@ import { SaveProfile } from "../../../application/usecases/profile/save-profile.
 export class ProfileController {
     private readonly findOneProfileUsecase: FindOneProfile<ProfileService>;
     private readonly saveProfileUsecase: SaveProfile<ProfileService>;
-
+    
     constructor() {
         this.findOneProfileUsecase = new FindOneProfile(new ProfileService());
         this.saveProfileUsecase = new SaveProfile(new ProfileService());
