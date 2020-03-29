@@ -1,5 +1,5 @@
 export interface UpdateCasesPort {
-    update(idCountry: string, idRisk: string): Promise<void>;
+    update(idCountry: string, idNewRisk: string, idOldRisk: string): Promise<void>;
 }
 
 export class UpdateCases<T extends UpdateCasesPort> {
@@ -9,7 +9,7 @@ export class UpdateCases<T extends UpdateCasesPort> {
         this.port = port;
     }
 
-    async update(idCountry: string, idRisk: string): Promise<void> {
-        await this.port.update(idCountry, idRisk);
+    async update(idCountry: string, idNewRisk: string, idOldRisk: string): Promise<void> {
+        await this.port.update(idCountry, idNewRisk, idOldRisk);
     }
 }
