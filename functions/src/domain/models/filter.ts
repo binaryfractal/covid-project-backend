@@ -5,4 +5,5 @@ export interface Filter extends Base {
     comparator: string;
     value: string;
     values: Array<string>;
+    limit: number;
 }

@@ -32,7 +32,12 @@ export class SearchService implements FindAllProfilesPort {
             }
         }
 
-        const querySnapshot: QuerySnapshot = await result.limit(100).get();
+        let limit: number = 100;
+        if(filters[0].limit !== null) {
+            limit = filters[0].limit;
+        }
+
+        const querySnapshot: QuerySnapshot = await result.limit(limit).get();
         const profiles: Array<Profile> = await this.fillAll(querySnapshot);
         return profiles;
     }
