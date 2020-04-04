@@ -35,7 +35,6 @@ export class AppModule {
         
         consumer
             .apply(AuthenticationMiddleware)
-            .forRoutes({ path: 'example-people', method: RequestMethod.ALL }, 'example-people/(.*)');   
-        
+            .forRoutes({ path: '*', method: RequestMethod.ALL });   
     }
 }
