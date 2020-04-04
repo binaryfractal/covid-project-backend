@@ -9,7 +9,7 @@ import {
 import { Country } from "../../../domain/models/country";
 import { CountryService } from "../../../infrastructure/services/country/country.service";
 import { FindOneCountry } from "../../../application/usecases/countries/find-one-country.usecase";
-import { FindAllCountries } from "application/usecases/countries/find-all-countries.usecase";
+import { FindAllCountries } from "../../../application/usecases/countries/find-all-countries.usecase";
 
 @Controller("countries")
 export class CountryController {
