@@ -40,8 +40,10 @@ export class CountryService implements FindOneCountryPort, FindAllCountriesPort 
             if(snapshot.data() !== undefined) {
                 country.id = snapshot.id;
                 country.name = snapshot.get('name');
+                country.nameApi = snapshot.get('nameApi');
                 country.confirmed = snapshot.get('confirmed');
                 country.recovered = snapshot.get('recovered');
+                country.deaths = snapshot.get('deaths');
                 country.risk = snapshot.get('risk');
                 country.riskFree = snapshot.get('riskFree');
                 country.riskHigh = snapshot.get('riskHigh');
