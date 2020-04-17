@@ -7,19 +7,23 @@ import { SearchService } from './services/profile/search.service';
 import { SearchController } from './controllers/profile/search.controller';
 import { CountryService } from './services/country/country.service';
 import { CountryController } from './controllers/country/country.controller';
+import { VersionService } from './services/version/version.service';
+import { VersionController } from './controllers/version/version.controller';
 
 @Module({
     controllers: [
         CountryController,
         ProfileController,
         SearchController,
-        SurveyController
+        SurveyController,
+        VersionController
     ],
     providers: [
         CountryService,
         ProfileService,
         SearchService,
-        SurveyService        
+        SurveyService,
+        VersionService        
     ]
 })
 export class InfrastructureModule {}
